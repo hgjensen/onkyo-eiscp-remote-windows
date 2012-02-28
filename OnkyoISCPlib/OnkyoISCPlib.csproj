@@ -43,6 +43,7 @@
     <Compile Include="ARP.cs" />
     <Compile Include="Commands\Input.cs" />
     <Compile Include="Commands\OSD.cs" />
+    <Compile Include="Commands\Video.cs" />
     <Compile Include="ISCPCmdAttrib.cs" />
     <Compile Include="ISCPDeviceDiscovery.cs" />
     <Compile Include="ISCPPacket.cs" />

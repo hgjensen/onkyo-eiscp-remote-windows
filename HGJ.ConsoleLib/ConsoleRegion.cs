@@ -38,5 +38,11 @@ namespace HGJ.ConsoleLib {
         Console.Write("> ");
       return Console.ReadLine();
     }
+    public ConsoleKeyInfo GetChar(int lineNo, bool showInputChar = true) {
+      Console.SetCursorPosition(Origin.X + 1, Origin.Y + lineNo);
+      if (showInputChar)
+        Console.Write("> ");
+      return Console.ReadKey();
+    }
   }
 }
