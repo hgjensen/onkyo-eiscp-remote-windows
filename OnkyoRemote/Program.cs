@@ -6,7 +6,21 @@ using OnkyoISCPlib.Commands;
 
 namespace ConsoleApplication1 {
   class Program {
+    private static bool powerStatus;
+
     static void Main(string[] args) {
+      //HGJ.ConsoleLib.HGJConsole con = new HGJ.ConsoleLib.HGJConsole();
+      //con.BackgroundColor = ConsoleColor.Black;
+      //con.Regions.Add(new HGJ.ConsoleLib.ConsoleRegion() {
+      //  Height = 2,
+      //  Width = 30,
+      //  Origin = new HGJ.ConsoleLib.ConsolePoint() { X=10, Y=5 },
+      //  Content = new System.Collections.Generic.List<string> { "Test linje 1", "\t test indent..." }
+      //});
+      //con.Draw();
+      //Console.ReadLine();
+      //return;
+
       Console.Write("Trying to find Onkyo reciever...");
       string deviceip = ISCPDeviceDiscovery.DiscoverDevice("172.16.40.255", 60128);
       if (deviceip == string.Empty) {
@@ -35,58 +49,67 @@ namespace ConsoleApplication1 {
 
       bool shouldstop = false;
       while (!shouldstop) {
-        switch (Console.ReadKey(true).Key) {
-          case ConsoleKey.C:
-            Console.Write("Host-IP:");
-            string input = Console.ReadLine();
-            Console.Write("Port:");
-            int port = Convert.ToInt32(Console.ReadLine());
-
-            break;
-          case ConsoleKey.Add:
-          case ConsoleKey.OemPlus:
-            ISCPSocket.SendPacket(MasterVolume.Up);
-            break;
-          case ConsoleKey.Subtract:
-          case ConsoleKey.OemMinus:
-            ISCPSocket.SendPacket(MasterVolume.Down);
-            break;
-          case ConsoleKey.V:
-            ISCPSocket.SendPacket(MasterVolume.Status);
-            break;
-          case ConsoleKey.P:
-            ISCPSocket.SendPacket(Power.Status);
-            break;
-          case ConsoleKey.M:
-            ISCPSocket.SendPacket(Muting.Toggle);
-            break;
-          case ConsoleKey.N:
-            ISCPSocket.SendPacket(Muting.Status);
-            break;
-          case ConsoleKey.H:
-            ISCPSocket.SendPacket(OSD.Home);
-            break;
-          case ConsoleKey.UpArrow:
-            ISCPSocket.SendPacket(OSD.Up);
-            break;
-          case ConsoleKey.DownArrow:
-            ISCPSocket.SendPacket(OSD.Down);
-            break;
-          case ConsoleKey.RightArrow:
-            ISCPSocket.SendPacket(OSD.Right);
-            break;
-          case ConsoleKey.LeftArrow:
-            ISCPSocket.SendPacket(OSD.Left);
-            break;
-          case ConsoleKey.X:
-            ISCPSocket.SendPacket(OSD.Exit);
-            break;
-          case ConsoleKey.Enter:
-            ISCPSocket.SendPacket(OSD.Enter);
-            break;
-          case ConsoleKey.Q:
-            shouldstop = true;
-            break;
+        var cki = Console.ReadKey(true);
+        if (cki.Modifiers == ConsoleModifiers.Shift) {
+          switch (cki.Key) {
+            case ConsoleKey.Add:
+            case ConsoleKey.OemPlus:
+            case ConsoleKey.Subtract:
+            case ConsoleKey.OemMinus:
+              ISCPSocket.SendPacket(MasterVolume.Status);
+              break;
+            case ConsoleKey.V:
+              ISCPSocket.SendPacket(MasterVolume.Status);
+              break;
+            case ConsoleKey.P:
+              ISCPSocket.SendPacket(Power.Status);
+              break;
+            case ConsoleKey.M:
+              ISCPSocket.SendPacket(Muting.Status);
+              break;
+          }
+        } else {
+          switch (cki.Key) {
+            case ConsoleKey.Add:
+            case ConsoleKey.OemPlus:
+              ISCPSocket.SendPacket(MasterVolume.Up);
+              break;
+            case ConsoleKey.Subtract:
+            case ConsoleKey.OemMinus:
+              ISCPSocket.SendPacket(MasterVolume.Down);
+              break;
+            case ConsoleKey.P:
+              ISCPSocket.SendPacket(Power.Status, true);
+              ISCPSocket.SendPacket(powerStatus ? Power.Off : Power.On);
+              break;
+            case ConsoleKey.M:
+              ISCPSocket.SendPacket(Muting.Toggle);
+              break;
+            case ConsoleKey.H:
+              ISCPSocket.SendPacket(OSD.Home);
+              break;
+            case ConsoleKey.UpArrow:
+              ISCPSocket.SendPacket(OSD.Up);
+              break;
+            case ConsoleKey.DownArrow:
+              ISCPSocket.SendPacket(OSD.Down);
+              break;
+            case ConsoleKey.RightArrow:
+              ISCPSocket.SendPacket(OSD.Right);
+              break;
+            case ConsoleKey.LeftArrow:
+              ISCPSocket.SendPacket(OSD.Left);
+              break;
+            case ConsoleKey.X:
+              ISCPSocket.SendPacket(OSD.Exit);
+              break;
+            case ConsoleKey.Enter:
+              ISCPSocket.SendPacket(OSD.Enter);
+              break;
+            case ConsoleKey.Q:
+              shouldstop = true;
+              break;
+          }
         }
       }
 
@@ -100,22 +123,24 @@ namespace ConsoleApplication1 {
       writeMenu();
       Console.WriteLine("Recieved: " + str);
       var r = ISCPPacket.ParsePacket(str);
+      if (r is Power) {
+        powerStatus = (r.Command == "!1PWR01");
+      }
       Console.WriteLine(r.ToString());
     }
 
     private static void writeMenu() {
       Console.Write(@"Menu:
- Set Volume   +/-
- Get Volume   V
- Toggle mute  M
- Get mute     N
- Get Power    P
- Quit         Q
+            Action:     Status:
+ Volume     +/-         Shift +/-
+ Mute       M           Shift M
+ Power      P           Shift P
+ Quit       Q
 
- Home         H
- Exit         X
- Enter        Enter
- Navigate     Arrow-keys
+ Home       H
+ Exit       X
+ Enter      Enter
+ Navigate   Arrow-keys
 
 "
         );
