@@ -8,45 +8,46 @@ using OnkyoISCPlib.Commands;
 namespace ConsoleApplication1 {
   class Program {
     private static bool powerStatus;
-    static HGJConsole con = new HGJConsole();
 
     static void Main(string[] args) {
       //Setup console-regions
-      con.BackgroundColor = ConsoleColor.Blue;
-      con.Regions.Add("input1", new ConsoleRegion(new ConsolePoint(1,1), 3, 35, "Input", true));
-      con.Regions.Add("recv", new ConsoleRegion(new ConsolePoint(1,6), 3, 35, "Recieved", false));
-      con.Regions.Add("status", new ConsoleRegion(new ConsolePoint(1,11), 2, 35, "Status", true));
-      con.Regions.Add("menu", new ConsoleRegion(new ConsolePoint(40,1), 12, 35, "Menu", false));
+      HGJConsole.Reset();
+      HGJConsole.BackgroundColor = ConsoleColor.Blue;
+      HGJConsole.Regions.Add("input1", new ConsoleRegion(new ConsolePoint(1,1), 3, 35, "Input", true));
+      HGJConsole.Regions.Add("recv", new ConsoleRegion(new ConsolePoint(1,6), 3, 35, "Recieved", false));
+      HGJConsole.Regions.Add("status", new ConsoleRegion(new ConsolePoint(1,11), 2, 35, "Status", true));
+      HGJConsole.Regions.Add("menu", new ConsoleRegion(new ConsolePoint(40,1), 12, 35, "Menu", false));
+      HGJConsole.Draw(true);
 
       //Auto-discovery, or get IP by input
-      con.Regions["status"].WriteContent("Finding reciever...");
+      HGJConsole.Regions["status"].WriteContent("Finding reciever...");
       string deviceip = ISCPDeviceDiscovery.DiscoverDevice("172.16.40.255", 60128);
       if (deviceip == string.Empty) {
-        con.Regions["status"].WriteContent("Finding reciever... failed.");
-        con.Regions["input1"].WriteContent("Please input IP of reciever: ");
-        deviceip = con.Regions["input1"].GetInput(2);
+        HGJConsole.Regions["status"].WriteContent("Finding reciever... failed.");
+        HGJConsole.Regions["input1"].WriteContent("Please input IP of reciever: ");
+        deviceip = HGJConsole.Regions["input1"].GetInput(2);
       } else {
-        con.Regions["status"].WriteContent("Finding reciever... Success.");
+        HGJConsole.Regions["status"].WriteContent("Finding reciever... Success.");
       }
 
       //Check if host is alive
       Ping p = new Ping();
       PingReply rep = p.Send(deviceip, 3000);
       while (rep.Status != IPStatus.Success) {
-        con.Regions["status"].WriteContent(string.Format("Cannot connect to Onkyo reciever ({0}). Sleeping 30sec", rep.Status));
+        HGJConsole.Regions["status"].WriteContent(string.Format("Cannot connect to Onkyo reciever ({0}). Sleeping 30sec", rep.Status));
         Thread.Sleep(30000);
         p.Send(deviceip, 3000);
       }
 
       //Setup sockets to reciever
-      con.Regions["status"].WriteContent("Connecting.");
+      HGJConsole.Regions["status"].WriteContent("Connecting.");
       ISCPSocket.DeviceIp = deviceip;
       ISCPSocket.DevicePort = 60128;
       ISCPSocket.OnPacketRecieved += ISCPSocket_OnPacketRecieved;
       ISCPSocket.StartListener();
-      con.Regions["status"].WriteContent("Connected!");
-      con.Regions["input1"].WriteContent("Reciever: " + deviceip + ":60128");
-      con.Regions["recv"].Visible = true;
+      HGJConsole.Regions["status"].WriteContent("Connected!");
+      HGJConsole.Regions["input1"].WriteContent("Reciever: " + deviceip + ":60128");
+      HGJConsole.Regions["recv"].Visible = true;
 
       //Write menu to console-region
       writeMenu();
@@ -118,23 +119,23 @@ namespace ConsoleApplication1 {
         }
       }
 
-      con.Regions["status"].WriteContent("... Press any key to exit ...");
+      HGJConsole.Regions["status"].WriteContent("... Press any key to exit ...");
       Console.ReadKey();
       ISCPSocket.Dispose();
     }
 
     static void ISCPSocket_OnPacketRecieved(string str) {
-      con.Regions["recv"].WriteContent("Recieved: " + str);
+      HGJConsole.Regions["recv"].WriteContent("Recieved: " + str);
       var r = ISCPPacket.ParsePacket(str);
       if (r is Power) {
         powerStatus = (r.Command == "!1PWR01");
       }
-      con.Regions["recv"].WriteContent(r.ToString(), true);
+      HGJConsole.Regions["recv"].WriteContent(r.ToString(), true);
     }
 
     private static void writeMenu() {
-      if (!con.Regions["menu"].Visible) con.Regions["menu"].Visible = true;
-      con.Regions["menu"].WriteContent(@"            Action:     Status:
+      if (!HGJConsole.Regions["menu"].Visible) HGJConsole.Regions["menu"].Visible = true;
+      HGJConsole.Regions["menu"].WriteContent(@"            Action:     Status:
  Volume     +/-         Shift +/-
  Mute       M           Shift M
  Power      P           Shift P
