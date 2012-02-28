@@ -38,18 +38,41 @@ namespace HGJ.ConsoleLib {
     private static ConsoleColor _backgroundColor;
     private static RegionDictionary<string, ConsoleRegion> _regions;
 
+    private static ConsolePoint consoleSize {
+      get {
+        if (_consoleSize == default(ConsolePoint) && Regions.Count > 0) {
+          var xx = Regions.OrderByDescending(p => p.Value.Origin.X).First();
+          var yy = Regions.OrderByDescending(p => p.Value.Origin.Y).First();
+          _consoleSize = new ConsolePoint((xx.Value.Origin.X + xx.Value.Width + 3), (yy.Value.Origin.Y + yy.Value.Height + 3));
+        } else if (_consoleSize == default(ConsolePoint) && Regions.Count == 0)
+          _consoleSize = new ConsolePoint(50, 30);
+        return _consoleSize;
+      }
+    }
+    private static ConsolePoint _consoleSize;
+
     static void Regions_RemoveEvent(RegionDictionary<string, ConsoleRegion>.RemoveEventArgs pRemoveEventArgs) {
+      _consoleSize = null;
       Draw();
     }
     static void Regions_AddEvent(RegionDictionary<string, ConsoleRegion>.AddEventArgs pAddEventArgs) {
       pAddEventArgs.Value.OnContentUpdated += Value_OnContentUpdated;
+      _consoleSize = null;
       Draw();
     }
     static void Value_OnContentUpdated() {
+      _consoleSize = null;
       Draw();
     }
 
     public static void Draw(bool clear = false) {
+      if (Console.WindowHeight != consoleSize.Y || Console.WindowWidth != consoleSize.X) {
+        Console.SetWindowSize(consoleSize.X, consoleSize.Y);
+        Console.BufferHeight = consoleSize.Y;
+        Console.BufferWidth = consoleSize.X;
+      }
+
+      ConsolePoint origpos = new ConsolePoint(Console.CursorLeft, Console.CursorTop);
       if (clear) {
         Console.BackgroundColor = BackgroundColor;
         Console.Clear();
@@ -71,7 +94,8 @@ namespace HGJ.ConsoleLib {
         }
       }
 
-      Console.SetCursorPosition(Console.WindowWidth - 1, Console.WindowHeight - 1);
+      //Console.SetCursorPosition(Console.WindowWidth - 1, Console.WindowHeight - 1);
+      Console.SetCursorPosition(origpos.X, origpos.Y);
     }
 
     private static void drawRegionBorder(ConsoleRegion r) {

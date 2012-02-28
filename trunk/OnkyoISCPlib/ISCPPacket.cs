@@ -52,6 +52,8 @@ namespace OnkyoISCPlib {
           return Power.ParsePacket(command);
         case "AMT":
           return Muting.ParsePacket(command);
+        case "IFA":
+          return Audio.ParsePacket(command);
         case "SLI":
           break;
       }

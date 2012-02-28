@@ -13,21 +13,32 @@ namespace ConsoleApplication1 {
       //Setup console-regions
       HGJConsole.Reset();
       HGJConsole.BackgroundColor = ConsoleColor.Blue;
-      HGJConsole.Regions.Add("input1", new ConsoleRegion(new ConsolePoint(1,1), 3, 35, "Input", true));
-      HGJConsole.Regions.Add("recv", new ConsoleRegion(new ConsolePoint(1,6), 3, 35, "Recieved", false));
-      HGJConsole.Regions.Add("status", new ConsoleRegion(new ConsolePoint(1,11), 2, 35, "Status", true));
-      HGJConsole.Regions.Add("menu", new ConsoleRegion(new ConsolePoint(40,1), 12, 35, "Menu", false));
+      HGJConsole.Regions.Add("input1", new ConsoleRegion(new ConsolePoint(1, 1), 3, 35, "Input", true));
+      HGJConsole.Regions.Add("recv", new ConsoleRegion(new ConsolePoint(1, 6), 4, 35, "Recieved", false));
+      HGJConsole.Regions.Add("status", new ConsoleRegion(new ConsolePoint(1, 12), 2, 35, "Status", true));
+      HGJConsole.Regions.Add("menu", new ConsoleRegion(new ConsolePoint(40, 1), 13, 35, "Menu", false));
+      HGJConsole.Regions.Add("device", new ConsoleRegion(new ConsolePoint(1, 16), 3, 74, "Device-info", false));
       HGJConsole.Draw(true);
 
       //Auto-discovery, or get IP by input
       HGJConsole.Regions["status"].WriteContent("Finding reciever...");
-      string deviceip = ISCPDeviceDiscovery.DiscoverDevice("172.16.40.255", 60128);
+      var discovery = ISCPDeviceDiscovery.DiscoverDevice("172.16.40.255", 60128);
+      string deviceip = discovery.IP;
       if (deviceip == string.Empty) {
         HGJConsole.Regions["status"].WriteContent("Finding reciever... failed.");
         HGJConsole.Regions["input1"].WriteContent("Please input IP of reciever: ");
         deviceip = HGJConsole.Regions["input1"].GetInput(2);
+        HGJConsole.Regions["device"].Visible = true;
+        discovery.IP = deviceip;
+        discovery.MAC = "N/A";
+        discovery.Model = "N/A";
+        discovery.Port = 60128;
+        discovery.Region = "N/A";
+        HGJConsole.Regions["device"].WriteContent(discovery.ToString());
       } else {
         HGJConsole.Regions["status"].WriteContent("Finding reciever... Success.");
+        HGJConsole.Regions["device"].Visible = true;
+        HGJConsole.Regions["device"].WriteContent(discovery.ToString());
       }
 
       //Check if host is alive
@@ -41,13 +52,13 @@ namespace ConsoleApplication1 {
 
       //Setup sockets to reciever
       HGJConsole.Regions["status"].WriteContent("Connecting.");
-      ISCPSocket.DeviceIp = deviceip;
-      ISCPSocket.DevicePort = 60128;
+      ISCPSocket.DeviceIp = discovery.IP;
+      ISCPSocket.DevicePort = discovery.Port;
       ISCPSocket.OnPacketRecieved += ISCPSocket_OnPacketRecieved;
       ISCPSocket.StartListener();
       HGJConsole.Regions["status"].WriteContent("Connected!");
-      HGJConsole.Regions["input1"].WriteContent("Reciever: " + deviceip + ":60128");
       HGJConsole.Regions["recv"].Visible = true;
+      HGJConsole.Regions["input1"].WriteContent("Input:\r\n> ");
 
       //Write menu to console-region
       writeMenu();
@@ -55,7 +66,7 @@ namespace ConsoleApplication1 {
       //Loop input characters...
       bool shouldstop = false;
       while (!shouldstop) {
-        var cki = Console.ReadKey(true);
+        var cki = HGJConsole.Regions["input1"].GetChar(2);
         if (cki.Modifiers == ConsoleModifiers.Shift) {
           switch (cki.Key) {
             case ConsoleKey.Add:
@@ -72,6 +83,9 @@ namespace ConsoleApplication1 {
               break;
             case ConsoleKey.M:
               ISCPSocket.SendPacket(Muting.Status);
+              break;
+            case ConsoleKey.A:
+              ISCPSocket.SendPacket(Audio.Status);
               break;
           }
         } else {
@@ -136,6 +150,7 @@ namespace ConsoleApplication1 {
     private static void writeMenu() {
       if (!HGJConsole.Regions["menu"].Visible) HGJConsole.Regions["menu"].Visible = true;
       HGJConsole.Regions["menu"].WriteContent(@"            Action:     Status:
+ Audio-info             Shift A
  Volume     +/-         Shift +/-
  Mute       M           Shift M
  Power      P           Shift P
