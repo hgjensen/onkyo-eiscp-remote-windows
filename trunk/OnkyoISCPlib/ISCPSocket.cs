@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -18,11 +16,18 @@ namespace OnkyoISCPlib {
     private static Socket sock;
     private static Thread listener;
 
-    public static void SendPacket(ISCPPacket packet) {
+    public static void SendPacket(ISCPPacket packet, bool blocking = false) {
+      if (blocking) {
+        blocked = true;
+        OnPacketRecieved -= blockingListen;
+        OnPacketRecieved += blockingListen;
+      }
       checkConnect();
       if (sock != null && sock.Connected) {
         sock.Send(packet.GetBytes(), 0, packet.GetBytes().Length, SocketFlags.None);
       }
+      while (blocked) Thread.Sleep(100);
+      Thread.Sleep(100);
     }
     public static void StartListener() {
       checkConnect();
@@ -70,6 +75,12 @@ namespace OnkyoISCPlib {
         sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) { ReceiveTimeout = 1000 };
       if (!sock.Connected)
         sock.Connect(DeviceIp, DevicePort);
+    }
+
+    private static bool blocked { get; set; }
+
+    private static void blockingListen(string str) {
+      blocked = false;
     }
   }
 }
