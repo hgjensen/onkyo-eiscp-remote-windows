@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace HGJ.ConsoleLib {
   public delegate void ContentUpdated();
+  public delegate void ArrowPressed();
 
   public class ConsoleRegion {
     public ConsoleRegion(ConsolePoint origin, int height, int width, string title, bool visible) {
@@ -16,6 +17,11 @@ namespace HGJ.ConsoleLib {
     }
 
     public event ContentUpdated OnContentUpdated;
+    public event ArrowPressed OnArrowDown;
+    public event ArrowPressed OnArrowUp;
+    public event ArrowPressed OnArrowLeft;
+    public event ArrowPressed OnArrowRight;
+
     public ConsolePoint Origin { get; set; }
     public int Height { get; set; }
     public int Width { get; set; }
@@ -23,16 +29,16 @@ namespace HGJ.ConsoleLib {
 
     public string Title { get; set; }
 
-    public List<string> Content { get; set; }
+    internal List<string> Content { get; set; }
 
     public void WriteContent(string message, bool append = false) {
       if (!append)
         Content = new List<string>();
-      Content.AddRange(message.Split(new[] { "\r\n" }, StringSplitOptions.None));
+      Content.AddRange(message.Split(new[] { Environment.NewLine }, StringSplitOptions.None));
       if (OnContentUpdated != null) OnContentUpdated();
     }
 
-    public string GetInput(int lineNo, bool showInputChar = true) {
+    public string GetLine(int lineNo, bool showInputChar = true) {
       Console.SetCursorPosition(Origin.X + 1, Origin.Y + lineNo);
       if (showInputChar)
         Console.Write("> ");

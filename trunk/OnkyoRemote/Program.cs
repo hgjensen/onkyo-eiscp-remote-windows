@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
 using HGJ.ConsoleLib;
@@ -8,6 +9,7 @@ using OnkyoISCPlib.Commands;
 namespace ConsoleApplication1 {
   class Program {
     private static bool powerStatus;
+    private static string inputStatus;
 
     static void Main(string[] args) {
       //Setup console-regions
@@ -18,16 +20,18 @@ namespace ConsoleApplication1 {
       HGJConsole.Regions.Add("status", new ConsoleRegion(new ConsolePoint(1, 12), 2, 35, "Status", true));
       HGJConsole.Regions.Add("menu", new ConsoleRegion(new ConsolePoint(40, 1), 13, 35, "Menu", false));
       HGJConsole.Regions.Add("device", new ConsoleRegion(new ConsolePoint(1, 16), 3, 74, "Device-info", false));
+      HGJConsole.Regions.Add("inputselect", new ConsoleRegion(new ConsolePoint(7, 3), 15, 60, "Input-select", false));
       HGJConsole.Draw(true);
 
       //Auto-discovery, or get IP by input
       HGJConsole.Regions["status"].WriteContent("Finding reciever...");
-      var discovery = ISCPDeviceDiscovery.DiscoverDevice("172.16.40.255", 60128);
+      //var discovery = ISCPDeviceDiscovery.DiscoverDevice("172.16.40.255", 60128);
+      var discovery = ISCPDeviceDiscovery.DiscoverDevice(60128);
       string deviceip = discovery.IP;
       if (deviceip == string.Empty) {
         HGJConsole.Regions["status"].WriteContent("Finding reciever... failed.");
         HGJConsole.Regions["input1"].WriteContent("Please input IP of reciever: ");
-        deviceip = HGJConsole.Regions["input1"].GetInput(2);
+        deviceip = HGJConsole.Regions["input1"].GetLine(2);
         HGJConsole.Regions["device"].Visible = true;
         discovery.IP = deviceip;
         discovery.MAC = "N/A";
@@ -98,6 +102,9 @@ namespace ConsoleApplication1 {
             case ConsoleKey.OemMinus:
               ISCPSocket.SendPacket(MasterVolume.Down);
               break;
+            case ConsoleKey.I:
+              inputMenu();
+              break;
             case ConsoleKey.P:
               ISCPSocket.SendPacket(Power.Status, true);
               ISCPSocket.SendPacket(powerStatus ? Power.Off : Power.On);
@@ -143,6 +150,8 @@ namespace ConsoleApplication1 {
       var r = ISCPPacket.ParsePacket(str);
       if (r is Power) {
         powerStatus = (r.Command == "!1PWR01");
+      } else if (r is Input) {
+        inputStatus = r.ToString();
       }
       HGJConsole.Regions["recv"].WriteContent(r.ToString(), true);
     }
@@ -163,6 +172,76 @@ namespace ConsoleApplication1 {
 
 "
         );
+    }
+
+    private static void inputMenu() {
+      ISCPSocket.SendPacket(Input.Status);
+      Thread.Sleep(250);
+      if (!HGJConsole.Regions["inputselect"].Visible) HGJConsole.Regions["inputselect"].Visible = true;
+      writeInputMenu();
+      ConsoleKeyInfo cki = default(ConsoleKeyInfo);
+      while (cki.Key != ConsoleKey.Escape) {
+        cki = HGJConsole.Regions["inputselect"].GetChar(14);
+        switch (cki.Key) {
+          case ConsoleKey.V:
+            ISCPSocket.SendPacket(Input.Video1);
+            break;
+          case ConsoleKey.S:
+            ISCPSocket.SendPacket(Input.Video2);
+            break;
+          case ConsoleKey.G:
+            ISCPSocket.SendPacket(Input.Video3);
+            break;
+          case ConsoleKey.A:
+            ISCPSocket.SendPacket(Input.Video4);
+            break;
+          case ConsoleKey.B:
+            ISCPSocket.SendPacket(Input.Video5);
+            break;
+          case ConsoleKey.P:
+            ISCPSocket.SendPacket(Input.Video6);
+            break;
+          case ConsoleKey.D:
+            ISCPSocket.SendPacket(Input.DVD);
+            break;
+          case ConsoleKey.T:
+            ISCPSocket.SendPacket(Input.Tape1);
+            break;
+          case ConsoleKey.H:
+            ISCPSocket.SendPacket(Input.Phono);
+            break;
+          case ConsoleKey.C:
+            ISCPSocket.SendPacket(Input.CD);
+            break;
+          case ConsoleKey.F:
+            ISCPSocket.SendPacket(Input.FM);
+            break;
+          case ConsoleKey.L:
+            ISCPSocket.SendPacket(Input.DLNA);
+            break;
+          case ConsoleKey.N:
+            ISCPSocket.SendPacket(Input.Network);
+            break;
+        }
+        writeInputMenu();
+      }
+      HGJConsole.Regions["inputselect"].Visible = false;
+      HGJConsole.Draw(true);
+    }
+    private static void writeInputMenu() {
+      HGJConsole.Regions["inputselect"].WriteContent(string.Format(@"Current input: {0}
+
+Key: Input:  | Key:  Input:  (ESC Return)
+ V   VCR/DVD |  C  CD
+ S   CBL/SAT |  F  FM
+ G   GAME    |  L  DLNA
+ A   AUX1    |  N  NET
+ B   AUX2    |
+ P   PC      |
+ D   BD/TAPE |
+ T   TV/TAPE |
+ H   PHONO   |
+", inputStatus));
     }
   }
 }

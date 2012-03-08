@@ -55,6 +55,7 @@ namespace OnkyoISCPlib {
         case "IFA":
           return Audio.ParsePacket(command);
         case "SLI":
+          return Input.ParsePacket(packetstring);
           break;
       }
       throw new ArgumentException("Cannot find command-group " + group, "packetstring");

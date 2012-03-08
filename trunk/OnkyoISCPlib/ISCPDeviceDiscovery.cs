@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -10,16 +13,19 @@ namespace OnkyoISCPlib {
     static UdpClient client;
     static IPEndPoint localEndPoint;
 
-    public static DiscoveryResult DiscoverDevice(string networkaddress, int port) {
+    public static DiscoveryResult DiscoverDevice(int port) {
+      List<string> ips = getInterfaceAddresses();
       DiscoveryResult ret = new DiscoveryResult();
       localEndPoint = new IPEndPoint(IPAddress.Any, 0);
       client = new UdpClient(port);
 
       var p = new ISCPPacket("!xECNQSTN");
       byte[] sendbuf = p.GetBytes();
-      client.Send(sendbuf, sendbuf.Length, IPAddress.Parse(networkaddress).ToString(), port);
-      client.Send(sendbuf, sendbuf.Length, IPAddress.Parse(networkaddress).ToString(), port);
-      client.Send(sendbuf, sendbuf.Length, IPAddress.Parse(networkaddress).ToString(), port);
+      foreach (string networkaddress in ips) {
+        client.Send(sendbuf, sendbuf.Length, IPAddress.Parse(networkaddress).ToString(), port);
+        client.Send(sendbuf, sendbuf.Length, IPAddress.Parse(networkaddress).ToString(), port);
+        client.Send(sendbuf, sendbuf.Length, IPAddress.Parse(networkaddress).ToString(), port);
+      }
       while (client.Available > 0) {
         byte[] recv = client.Receive(ref localEndPoint);
         Thread.Sleep(100);
@@ -41,7 +47,7 @@ namespace OnkyoISCPlib {
       client.Close();
       return ret;
     }
-    
+
     //"!cECNnnnnnn/ppppp/dd/iiiiiiiiiiii"
     //dd:
     // DX: North American model
@@ -62,6 +68,42 @@ namespace OnkyoISCPlib {
           IP,
           Port);
       }
+    }
+
+    private static List<string> getInterfaceAddresses() {
+      List<string> ret = new List<string>();
+
+      var nics = NetworkInterface.GetAllNetworkInterfaces();
+      foreach (var nic in nics) {
+        var ipProps = nic.GetIPProperties();
+
+        // We're only interested in IPv4 addresses for this example.
+        var ipv4Addrs = ipProps.UnicastAddresses
+            .Where(addr => addr.Address.AddressFamily == AddressFamily.InterNetwork);
+
+        foreach (var addr in ipv4Addrs) {
+          var network = GetBroadcastAddress(addr.Address, addr.IPv4Mask);
+          if (network != null)
+            ret.Add(network.ToString());
+        }
+      }
+
+      return ret;
+    }
+
+    public static IPAddress GetBroadcastAddress(IPAddress address, IPAddress subnetMask) {
+      if (subnetMask == null) return null;
+      byte[] ipAdressBytes = address.GetAddressBytes();
+      byte[] subnetMaskBytes = subnetMask.GetAddressBytes();
+
+      if (ipAdressBytes.Length != subnetMaskBytes.Length)
+        throw new ArgumentException("Lengths of IP address and subnet mask do not match.");
+
+      byte[] broadcastAddress = new byte[ipAdressBytes.Length];
+      for (int i = 0; i < broadcastAddress.Length; i++) {
+        broadcastAddress[i] = (byte)(ipAdressBytes[i] | (subnetMaskBytes[i] ^ 255));
+      }
+      return new IPAddress(broadcastAddress);
     }
   }
 }
