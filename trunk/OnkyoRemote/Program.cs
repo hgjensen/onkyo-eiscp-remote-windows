@@ -15,12 +15,12 @@ namespace ConsoleApplication1 {
       //Setup console-regions
       HGJConsole.Reset();
       HGJConsole.BackgroundColor = ConsoleColor.Blue;
-      HGJConsole.Regions.Add("input1", new ConsoleRegion(new ConsolePoint(1, 1), 3, 35, "Input", true));
+      HGJConsole.Regions.Add("input1", new ConsoleRegion(new ConsolePoint(1, 1), 4, 35, "Input", true));
       HGJConsole.Regions.Add("recv", new ConsoleRegion(new ConsolePoint(1, 6), 4, 35, "Recieved", false));
-      HGJConsole.Regions.Add("status", new ConsoleRegion(new ConsolePoint(1, 12), 2, 35, "Status", true));
+      HGJConsole.Regions.Add("status", new ConsoleRegion(new ConsolePoint(1, 11), 3, 35, "Status", true));
       HGJConsole.Regions.Add("menu", new ConsoleRegion(new ConsolePoint(40, 1), 13, 35, "Menu", false));
-      HGJConsole.Regions.Add("device", new ConsoleRegion(new ConsolePoint(1, 16), 3, 74, "Device-info", false));
-      HGJConsole.Regions.Add("inputselect", new ConsoleRegion(new ConsolePoint(7, 3), 15, 60, "Input-select", false));
+      HGJConsole.Regions.Add("device", new ConsoleRegion(new ConsolePoint(1, 15), 3, 74, "Device-info", false));
+      HGJConsole.Regions.Add("inputselect", new ConsoleRegion(new ConsolePoint(7, 2), 16, 60, "Input-select", false));
       HGJConsole.Draw(true);
 
       //Auto-discovery, or get IP by input
@@ -28,7 +28,7 @@ namespace ConsoleApplication1 {
       //var discovery = ISCPDeviceDiscovery.DiscoverDevice("172.16.40.255", 60128);
       var discovery = ISCPDeviceDiscovery.DiscoverDevice(60128);
       string deviceip = discovery.IP;
-      if (deviceip == string.Empty) {
+      if (string.IsNullOrEmpty(deviceip)) {
         HGJConsole.Regions["status"].WriteContent("Finding reciever... failed.");
         HGJConsole.Regions["input1"].WriteContent("Please input IP of reciever: ");
         deviceip = HGJConsole.Regions["input1"].GetLine(2);
@@ -164,6 +164,7 @@ namespace ConsoleApplication1 {
  Mute       M           Shift M
  Power      P           Shift P
  Quit       Q
+ Input                  I
 
  Home       H
  Exit       X
