@@ -4,6 +4,8 @@ using System.Linq;
 
 namespace HGJ.ConsoleLib {
   public static class HGJConsole {
+    public static bool CanDraw { get; private set; }
+
     private const string corner = "+";
     private const string hori = "-";
     private const string vert = "|";
@@ -43,7 +45,7 @@ namespace HGJ.ConsoleLib {
         if (_consoleSize == default(ConsolePoint) && Regions.Count > 0) {
           var xx = Regions.OrderByDescending(p => p.Value.Origin.X).First();
           var yy = Regions.OrderByDescending(p => p.Value.Origin.Y).First();
-          _consoleSize = new ConsolePoint((xx.Value.Origin.X + xx.Value.Width + 3), (yy.Value.Origin.Y + yy.Value.Height + 3));
+          _consoleSize = new ConsolePoint((xx.Value.Origin.X + xx.Value.Width + 1), (yy.Value.Origin.Y + yy.Value.Height + 1));
         } else if (_consoleSize == default(ConsolePoint) && Regions.Count == 0)
           _consoleSize = new ConsolePoint(50, 30);
         return _consoleSize;
@@ -52,50 +54,60 @@ namespace HGJ.ConsoleLib {
     private static ConsolePoint _consoleSize;
 
     static void Regions_RemoveEvent(RegionDictionary<string, ConsoleRegion>.RemoveEventArgs pRemoveEventArgs) {
+      CanDraw = false;
       _consoleSize = null;
+      CanDraw = true;
       Draw();
     }
     static void Regions_AddEvent(RegionDictionary<string, ConsoleRegion>.AddEventArgs pAddEventArgs) {
+      CanDraw = false;
       pAddEventArgs.Value.OnContentUpdated += Value_OnContentUpdated;
       _consoleSize = null;
+      CanDraw = true;
       Draw();
     }
     static void Value_OnContentUpdated() {
+      CanDraw = false;
       _consoleSize = null;
+      CanDraw = true;
       Draw();
     }
 
     public static void Draw(bool clear = false) {
-      if (Console.WindowHeight != consoleSize.Y || Console.WindowWidth != consoleSize.X) {
-        Console.SetWindowSize(consoleSize.X, consoleSize.Y);
-        Console.BufferHeight = consoleSize.Y;
-        Console.BufferWidth = consoleSize.X;
-      }
-
-      ConsolePoint origpos = new ConsolePoint(Console.CursorLeft, Console.CursorTop);
-      if (clear) {
-        Console.BackgroundColor = BackgroundColor;
-        Console.Clear();
-      }
-
-      foreach (var consoleRegion in Regions.Where(p => p.Value.Visible)) {
-        drawRegionBorder(consoleRegion.Value);
-        Console.SetCursorPosition(consoleRegion.Value.Origin.X + 1, consoleRegion.Value.Origin.Y + 1);
-        int h = 1;
-        foreach (string line in consoleRegion.Value.Content) {
-          string l = (line.Length > consoleRegion.Value.Width - 2
-                               ? line.Substring(0, consoleRegion.Value.Width - 2)
-                               : line);
-          Console.WriteLine(l);
-          Console.SetCursorPosition(consoleRegion.Value.Origin.X + 1, consoleRegion.Value.Origin.Y + 1 + h);
-          h++;
-          if (h >= consoleRegion.Value.Height)
-            break;
+      if (CanDraw) {
+        CanDraw = false;
+        if (Console.WindowHeight != consoleSize.Y || Console.WindowWidth != consoleSize.X) {
+          Console.SetWindowSize(consoleSize.X, consoleSize.Y);
+          Console.BufferHeight = consoleSize.Y;
+          Console.BufferWidth = consoleSize.X;
         }
-      }
 
-      //Console.SetCursorPosition(Console.WindowWidth - 1, Console.WindowHeight - 1);
-      Console.SetCursorPosition(origpos.X, origpos.Y);
+        ConsolePoint origpos = new ConsolePoint(Console.CursorLeft, Console.CursorTop);
+        if (clear) {
+          Console.BackgroundColor = BackgroundColor;
+          Console.Clear();
+        }
+
+        foreach (var consoleRegion in Regions.Where(p => p.Value.Visible)) {
+          drawRegionBorder(consoleRegion.Value);
+          Console.SetCursorPosition(consoleRegion.Value.Origin.X + 1, consoleRegion.Value.Origin.Y + 1);
+          int h = 1;
+          foreach (string line in consoleRegion.Value.Content) {
+            string l = (line.Length > consoleRegion.Value.Width - 2
+                          ? line.Substring(0, consoleRegion.Value.Width - 2)
+                          : line);
+            Console.WriteLine(l);
+            Console.SetCursorPosition(consoleRegion.Value.Origin.X + 1, consoleRegion.Value.Origin.Y + h);
+            h++;
+            if (h >= consoleRegion.Value.Height - 2)
+              break;
+          }
+        }
+
+        //Console.SetCursorPosition(Console.WindowWidth - 1, Console.WindowHeight - 1);
+        Console.SetCursorPosition(origpos.X, origpos.Y);
+        CanDraw = true;
+      }
     }
 
     private static void drawRegionBorder(ConsoleRegion r) {
@@ -108,10 +120,11 @@ namespace HGJ.ConsoleLib {
       string firstline = corner;
       int lentitle = r.Title.Length;
       int w = r.Width;
-      int titlestart = (w / 2) - (lentitle / 2);
+      int titlestart = Convert.ToInt32(Math.Floor((w / 2m) - (lentitle / 2m)));
+      if (titlestart * 2 + lentitle > r.Width) titlestart--;
 
       //Replace part of line with title
-      for (int x = 0; x < r.Width; x++)
+      for (int x = 0; x < r.Width - 2; x++)
         if (x == titlestart) {
           firstline += r.Title;
           x += lentitle - 1;
@@ -121,25 +134,25 @@ namespace HGJ.ConsoleLib {
 
       //Generate last line
       string lastline = corner;
-      for (int x = 0; x < r.Width; x++)
+      for (int x = 0; x < r.Width - 2; x++)
         lastline += hori;
       lastline += corner;
 
       //Make space-buffer
       string space = string.Empty;
-      for (int x = 0; x < r.Width; x++)
+      for (int x = 0; x < r.Width - 2; x++)
         space += blank;
 
       //Write border
       Console.SetCursorPosition(r.Origin.X, r.Origin.Y);
       Console.WriteLine(firstline);
 
-      for (int x = 1; x <= r.Height; x++) {
+      for (int x = 1; x < r.Height - 1; x++) {
         Console.SetCursorPosition(r.Origin.X, r.Origin.Y + x);
         Console.Write(vert + space + vert);
       }
 
-      Console.SetCursorPosition(r.Origin.X, r.Origin.Y + r.Height);
+      Console.SetCursorPosition(r.Origin.X, r.Origin.Y + r.Height - 1);
       Console.WriteLine(lastline);
     }
 
