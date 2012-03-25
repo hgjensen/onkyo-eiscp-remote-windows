@@ -8,13 +8,19 @@ using OnkyoISCPlib.Commands;
 namespace OnkyoISCPlib {
   public class ISCPPacket {
     private const byte EOF = 0x0D;
-    private static byte[] packetTemplate = new byte[] {
-       0x49, 0x53, 0x43, 0x50, 
-       0x00, 0x00, 0x00, 0x10, 
-       0x00, 0x00, 0x00, 0xFF, //replace last with length
-       0x01, 0x00, 0x00, 0x00 
-       //Add data + EOF here
-    };
+
+    private static readonly byte[] PacketTemplate = new byte[]
+      {
+        0x49, 0x53, 0x43, 0x50,
+        0x00, 0x00, 0x00, 0x10,
+        0x00, 0x00, 0x00, 0xFF, //replace last with length
+        0x01, 0x00, 0x00, 0x00 
+        //Add data + EOF here
+      };
+
+    public ISCPPacket(string command) {
+      Command = command;
+    }
 
     internal string CustomData { get; set; }
 
@@ -28,12 +34,8 @@ namespace OnkyoISCPlib {
       get { return Encoding.ASCII.GetBytes(Command); }
     }
 
-    public ISCPPacket(string command) {
-      Command = command;
-    }
-
     public byte[] GetBytes() {
-      List<byte> ret = packetTemplate.ToList();
+      List<byte> ret = PacketTemplate.ToList();
       ret[11] = byte.Parse(string.Format("{0:X2}", (Length + 1).ToString()), NumberStyles.HexNumber);
       ret.AddRange(cmdBytes);
       ret.Add(EOF);
@@ -56,7 +58,6 @@ namespace OnkyoISCPlib {
           return Audio.ParsePacket(command);
         case "SLI":
           return Input.ParsePacket(packetstring);
-          break;
       }
       throw new ArgumentException("Cannot find command-group " + group, "packetstring");
     }

@@ -10,28 +10,28 @@ using System.Threading;
 namespace OnkyoISCPlib {
   public static class ISCPDeviceDiscovery {
     /* "!xECNQSTN" */
-    static UdpClient client;
-    static IPEndPoint localEndPoint;
+    private static UdpClient _client;
+    private static IPEndPoint _localEndPoint;
 
     public static DiscoveryResult DiscoverDevice(int port) {
-      List<string> ips = getInterfaceAddresses();
-      DiscoveryResult ret = new DiscoveryResult();
-      localEndPoint = new IPEndPoint(IPAddress.Any, 0);
-      client = new UdpClient(port);
+      IEnumerable<string> ips = getInterfaceAddresses();
+      var ret = new DiscoveryResult();
+      _localEndPoint = new IPEndPoint(IPAddress.Any, 0);
+      _client = new UdpClient(port);
 
       var p = new ISCPPacket("!xECNQSTN");
       byte[] sendbuf = p.GetBytes();
       foreach (string networkaddress in ips) {
-        client.Send(sendbuf, sendbuf.Length, IPAddress.Parse(networkaddress).ToString(), port);
-        client.Send(sendbuf, sendbuf.Length, IPAddress.Parse(networkaddress).ToString(), port);
-        client.Send(sendbuf, sendbuf.Length, IPAddress.Parse(networkaddress).ToString(), port);
+        _client.Send(sendbuf, sendbuf.Length, IPAddress.Parse(networkaddress).ToString(), port);
+        _client.Send(sendbuf, sendbuf.Length, IPAddress.Parse(networkaddress).ToString(), port);
+        _client.Send(sendbuf, sendbuf.Length, IPAddress.Parse(networkaddress).ToString(), port);
       }
-      while (client.Available > 0) {
-        byte[] recv = client.Receive(ref localEndPoint);
+      while (_client.Available > 0) {
+        byte[] recv = _client.Receive(ref _localEndPoint);
         Thread.Sleep(100);
-        StringBuilder sb = new StringBuilder();
-        for (int x = 0; x < recv.Length; x++)
-          sb.Append(char.ConvertFromUtf32(Convert.ToInt32(string.Format("{0:x2}", recv[x]), 16)));
+        var sb = new StringBuilder();
+        foreach (byte t in recv)
+          sb.Append(char.ConvertFromUtf32(Convert.ToInt32(string.Format("{0:x2}", t), 16)));
         string stringData = sb.ToString();
         if (stringData.Contains("!1ECN")) {
           int idx = stringData.IndexOf("!1ECN") + 5;
@@ -44,7 +44,7 @@ namespace OnkyoISCPlib {
           ret.Model = stringData.Substring(idx, 7);
         }
       }
-      client.Close();
+      _client.Close();
       return ret;
     }
 
@@ -54,41 +54,17 @@ namespace OnkyoISCPlib {
     // XX: European or Asian model
     // JJ: Japanese model
 
-    public struct DiscoveryResult {
-      public string MAC { get; set; }
-      public string IP { get; set; }
-      public int Port { get; set; }
-      public string Model { get; set; }
-      public string Region { get; set; }
-      public override string ToString() {
-        return string.Format("Model: {0}, Region: {1}, MAC: {2}\r\nIP: {3}, Port: {4}",
-          Model,
-          (Region == "DX") ? "North America" : (Region == "XX") ? "Europe/Asia" : (Region == "N/A") ? "N/A" : "Japan",
-          MAC,
-          IP,
-          Port);
-      }
-    }
+    private static IEnumerable<string> getInterfaceAddresses() {
+      NetworkInterface[] nics = NetworkInterface.GetAllNetworkInterfaces();
 
-    private static List<string> getInterfaceAddresses() {
-      List<string> ret = new List<string>();
-
-      var nics = NetworkInterface.GetAllNetworkInterfaces();
-      foreach (var nic in nics) {
-        var ipProps = nic.GetIPProperties();
-
-        // We're only interested in IPv4 addresses for this example.
-        var ipv4Addrs = ipProps.UnicastAddresses
-            .Where(addr => addr.Address.AddressFamily == AddressFamily.InterNetwork);
-
-        foreach (var addr in ipv4Addrs) {
-          var network = GetBroadcastAddress(addr.Address, addr.IPv4Mask);
-          if (network != null)
-            ret.Add(network.ToString());
-        }
-      }
-
-      return ret;
+      return (from nic in nics
+              select nic.GetIPProperties()
+                into ipProps
+                from addr in ipProps.UnicastAddresses.Where(addr => addr.Address.AddressFamily == AddressFamily.InterNetwork)
+                select GetBroadcastAddress(addr.Address, addr.IPv4Mask)
+                  into network
+                  where network != null
+                  select network.ToString()).ToList();
     }
 
     public static IPAddress GetBroadcastAddress(IPAddress address, IPAddress subnetMask) {
@@ -99,11 +75,34 @@ namespace OnkyoISCPlib {
       if (ipAdressBytes.Length != subnetMaskBytes.Length)
         throw new ArgumentException("Lengths of IP address and subnet mask do not match.");
 
-      byte[] broadcastAddress = new byte[ipAdressBytes.Length];
+      var broadcastAddress = new byte[ipAdressBytes.Length];
       for (int i = 0; i < broadcastAddress.Length; i++) {
         broadcastAddress[i] = (byte)(ipAdressBytes[i] | (subnetMaskBytes[i] ^ 255));
       }
       return new IPAddress(broadcastAddress);
     }
+
+    #region Nested type: DiscoveryResult
+
+    public struct DiscoveryResult {
+      public string MAC { get; set; }
+      public string IP { get; set; }
+      public int Port { get; set; }
+      public string Model { get; set; }
+      public string Region { get; set; }
+
+      public override string ToString() {
+        return string.Format("Model: {0}, Region: {1}, MAC: {2}\r\nIP: {3}, Port: {4}",
+                             Model,
+                             (Region == "DX")
+                               ? "North America"
+                               : (Region == "XX") ? "Europe/Asia" : (Region == "N/A") ? "N/A" : "Japan",
+                             MAC,
+                             IP,
+                             Port);
+      }
+    }
+
+    #endregion
   }
 }

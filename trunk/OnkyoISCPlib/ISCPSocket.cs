@@ -7,14 +7,13 @@ namespace OnkyoISCPlib {
   public delegate void PacketRecieved(string str);
 
   public static class ISCPSocket {
-    public static event PacketRecieved OnPacketRecieved;
-
+    private static bool _shutdown;
+    private static Socket _sock;
+    private static Thread _listener;
     public static string DeviceIp { get; set; }
     public static int DevicePort { get; set; }
-
-    private static bool shutdown;
-    private static Socket sock;
-    private static Thread listener;
+    private static bool blocked { get; set; }
+    public static event PacketRecieved OnPacketRecieved;
 
     public static void SendPacket(ISCPPacket packet, bool blocking = false) {
       if (blocking) {
@@ -23,36 +22,42 @@ namespace OnkyoISCPlib {
         OnPacketRecieved += blockingListen;
       }
       checkConnect();
-      if (sock != null && sock.Connected) {
-        sock.Send(packet.GetBytes(), 0, packet.GetBytes().Length, SocketFlags.None);
+      if (_sock != null && _sock.Connected) {
+        _sock.Send(packet.GetBytes(), 0, packet.GetBytes().Length, SocketFlags.None);
       }
       while (blocked) Thread.Sleep(100);
       Thread.Sleep(100);
     }
+
     public static void StartListener() {
       checkConnect();
-      shutdown = false;
-      listener = new Thread(socketListener);
-      listener.Start();
+      _shutdown = false;
+      _listener = new Thread(socketListener);
+      _listener.Start();
     }
+
     public static void StopListener() {
-      shutdown = true;
+      _shutdown = true;
     }
+
     public static void Dispose() {
-      shutdown = true;
-      sock.Close();
-      sock.Dispose();
-      try { listener.Abort(); } catch { }
+      _shutdown = true;
+      _sock.Close();
+      _sock.Dispose();
+      try {
+        _listener.Abort();
+      } catch {
+      }
     }
 
     private static void socketListener() {
       try {
-        while (!shutdown) {
+        while (!_shutdown) {
           try {
-            if (sock.Available > 0) {
-              byte[] buffer = new byte[256];
-              sock.Receive(buffer, buffer.Length, SocketFlags.None);
-              StringBuilder builder = new StringBuilder();
+            if (_sock.Available > 0) {
+              var buffer = new byte[256];
+              _sock.Receive(buffer, buffer.Length, SocketFlags.None);
+              var builder = new StringBuilder();
               for (int i = 16; buffer[i] != 26; i++) {
                 if (buffer[i] != 26) {
                   int num = Convert.ToInt32(string.Format("{0:x2}", buffer[i]), 16);
@@ -71,13 +76,11 @@ namespace OnkyoISCPlib {
     }
 
     private static void checkConnect() {
-      if (sock == null)
-        sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) { ReceiveTimeout = 1000 };
-      if (!sock.Connected)
-        sock.Connect(DeviceIp, DevicePort);
+      if (_sock == null)
+        _sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) { ReceiveTimeout = 1000 };
+      if (!_sock.Connected)
+        _sock.Connect(DeviceIp, DevicePort);
     }
-
-    private static bool blocked { get; set; }
 
     private static void blockingListen(string str) {
       blocked = false;

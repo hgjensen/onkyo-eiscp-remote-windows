@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -10,30 +9,29 @@ namespace OnkyoISCPlib {
   /// This class allows you to retrieve the IP Address and Host Name for a specific machine on the local network when you only know it's MAC Address.
   /// </summary>
   public class ARP {
+    private string _hostName = string.Empty;
+
     public ARP(string macAddress, string ipAddress) {
-      this.MacAddress = macAddress;
-      this.IPAddress = ipAddress;
+      MacAddress = macAddress;
+      IPAddress = ipAddress;
     }
 
     public string MacAddress { get; private set; }
     public string IPAddress { get; private set; }
 
-    private string _HostName = string.Empty;
-
     public string HostName {
       get {
-        if (string.IsNullOrEmpty(this._HostName)) {
+        if (string.IsNullOrEmpty(_hostName)) {
           try {
             // Retrieve the "Host Name" for this IP Address. This is the "Name" of the machine.
-            this._HostName = Dns.GetHostEntry(this.IPAddress).HostName;
+            _hostName = Dns.GetHostEntry(IPAddress).HostName;
           } catch {
-            this._HostName = string.Empty;
+            _hostName = string.Empty;
           }
         }
-        return this._HostName;
+        return _hostName;
       }
     }
-
 
     #region "Static Methods"
 
@@ -43,7 +41,7 @@ namespace OnkyoISCPlib {
     /// <param name="macAddress">The MAC Address of the IPInfo to retrieve.</param>
     /// <returns></returns>
     public static ARP GetIPInfo(string macAddress) {
-      var ipinfo = (from ip in ARP.GetIPInfo()
+      ARP ipinfo = (from ip in GetIPInfo()
                     where ip.MacAddress.ToLowerInvariant() == macAddress.ToLowerInvariant()
                     select ip).FirstOrDefault();
 
@@ -56,22 +54,15 @@ namespace OnkyoISCPlib {
     /// <returns></returns>
     public static List<ARP> GetIPInfo() {
       try {
-        var list = new List<ARP>();
-
-        foreach (var arp in GetARPResult().Split(new char[] { '\n', '\r' })) {
-          // Parse out all the MAC / IP Address combinations
-          if (!string.IsNullOrEmpty(arp)) {
-            var pieces = (from piece in arp.Split(new char[] { ' ', '\t' })
-                          where !string.IsNullOrEmpty(piece)
-                          select piece).ToArray();
-            if (pieces.Length == 3) {
-              list.Add(new ARP(pieces[1].Replace("-", string.Empty), pieces[0]));
-            }
-          }
-        }
-
         // Return list of IPInfo objects containing MAC / IP Address combinations
-        return list;
+        return (from arp in GetARPResult().Split(new[] { '\n', '\r' })
+                where !string.IsNullOrEmpty(arp)
+                select (from piece in arp.Split(new[] { ' ', '\t' })
+                        where !string.IsNullOrEmpty(piece)
+                        select piece).ToArray()
+                  into pieces
+                  where pieces.Length == 3
+                  select new ARP(pieces[1].Replace("-", string.Empty), pieces[0])).ToList();
       } catch (Exception ex) {
         throw new Exception("IPInfo: Error Parsing 'arp -a' results", ex);
       }
@@ -83,7 +74,7 @@ namespace OnkyoISCPlib {
     /// <returns></returns>
     private static string GetARPResult() {
       Process p = null;
-      string output = string.Empty;
+      string output;
 
       try {
         p = Process.Start(new ProcessStartInfo("arp", "-a") {

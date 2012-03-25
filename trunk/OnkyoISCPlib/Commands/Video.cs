@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace OnkyoISCPlib.Commands {
+﻿namespace OnkyoISCPlib.Commands {
   public class Audio : ISCPPacket {
     /*"IFA" - Audio Infomation Command	
     "nnnnn:nnnnn"	Infomation of Audio(Same Immediate Display ',' is separator of infomations)
@@ -11,7 +6,18 @@ namespace OnkyoISCPlib.Commands {
     when you send "DIF02", receiver will return this response.	
     */
 
-    public static Audio Status { get { return new Audio("!1IFAQSTN", "Status"); } }
+    private Audio()
+      : base("!1IFAQSTN") {
+    }
+
+    public Audio(string command, string name)
+      : base(command) {
+      Name = name;
+    }
+
+    public static Audio Status {
+      get { return new Audio("!1IFAQSTN", "Status"); }
+    }
 
     public string Name { get; set; }
 
@@ -23,16 +29,7 @@ namespace OnkyoISCPlib.Commands {
     public string OutputMode { get; set; }
     public string OutputChannels { get; set; }
 
-    private Audio()
-      : base("!1IFAQSTN") {
-    }
-
-    public Audio(string command, string name)
-      : base(command) {
-      Name = name;
-    }
-
-    public static Audio ParsePacket(string command) {
+    public new static Audio ParsePacket(string command) {
       string[] parts = command.Split(',');
       return new Audio {
         InputSource = parts[0],
@@ -46,7 +43,7 @@ namespace OnkyoISCPlib.Commands {
 
     public override string ToString() {
       return string.Format("Input: {0}, {1}, {2}, {3}\r\nOutput: {4}, {5}",
-        InputSource, InputFormat, InputFreq, InputChannels, OutputMode, OutputChannels);
+                           InputSource, InputFormat, InputFreq, InputChannels, OutputMode, OutputChannels);
     }
   }
 }
