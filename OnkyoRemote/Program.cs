@@ -1,17 +1,16 @@
 ﻿using System;
-using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
 using HGJ.ConsoleLib;
 using OnkyoISCPlib;
 using OnkyoISCPlib.Commands;
 
-namespace ConsoleApplication1 {
-  class Program {
-    private static bool powerStatus;
-    private static string inputStatus;
+namespace OnkyoRemote {
+  internal class Program {
+    private static bool _powerStatus;
+    private static string _inputStatus;
 
-    static void Main(string[] args) {
+    private static void Main(string[] args) {
       //Setup console-regions
       HGJConsole.Reset();
       HGJConsole.BackgroundColor = ConsoleColor.Blue;
@@ -26,7 +25,7 @@ namespace ConsoleApplication1 {
       //Auto-discovery, or get IP by input
       HGJConsole.Regions["status"].WriteContent("Finding reciever...");
       //var discovery = ISCPDeviceDiscovery.DiscoverDevice("172.16.40.255", 60128);
-      var discovery = ISCPDeviceDiscovery.DiscoverDevice(60128);
+      ISCPDeviceDiscovery.DiscoveryResult discovery = ISCPDeviceDiscovery.DiscoverDevice(60128);
       string deviceip = discovery.IP;
       if (string.IsNullOrEmpty(deviceip)) {
         HGJConsole.Regions["status"].WriteContent("Finding reciever... failed.");
@@ -46,10 +45,11 @@ namespace ConsoleApplication1 {
       }
 
       //Check if host is alive
-      Ping p = new Ping();
+      var p = new Ping();
       PingReply rep = p.Send(deviceip, 3000);
-      while (rep.Status != IPStatus.Success) {
-        HGJConsole.Regions["status"].WriteContent(string.Format("Cannot connect to Onkyo reciever ({0}). Sleeping 30sec", rep.Status));
+      while (rep != null && rep.Status != IPStatus.Success) {
+        HGJConsole.Regions["status"].WriteContent(string.Format(
+          "Cannot connect to Onkyo reciever ({0}). Sleeping 30sec", rep.Status));
         Thread.Sleep(30000);
         p.Send(deviceip, 3000);
       }
@@ -70,7 +70,7 @@ namespace ConsoleApplication1 {
       //Loop input characters...
       bool shouldstop = false;
       while (!shouldstop) {
-        var cki = HGJConsole.Regions["input1"].GetChar(2);
+        ConsoleKeyInfo cki = HGJConsole.Regions["input1"].GetChar(2);
         if (cki.Modifiers == ConsoleModifiers.Shift) {
           switch (cki.Key) {
             case ConsoleKey.Add:
@@ -107,7 +107,7 @@ namespace ConsoleApplication1 {
               break;
             case ConsoleKey.P:
               ISCPSocket.SendPacket(Power.Status, true);
-              ISCPSocket.SendPacket(powerStatus ? Power.Off : Power.On);
+              ISCPSocket.SendPacket(_powerStatus ? Power.Off : Power.On);
               break;
             case ConsoleKey.M:
               ISCPSocket.SendPacket(Muting.Toggle);
@@ -145,20 +145,21 @@ namespace ConsoleApplication1 {
       ISCPSocket.Dispose();
     }
 
-    static void ISCPSocket_OnPacketRecieved(string str) {
+    private static void ISCPSocket_OnPacketRecieved(string str) {
       HGJConsole.Regions["recv"].WriteContent("Recieved: " + str);
-      var r = ISCPPacket.ParsePacket(str);
+      ISCPPacket r = ISCPPacket.ParsePacket(str);
       if (r is Power) {
-        powerStatus = (r.Command == "!1PWR01");
+        _powerStatus = (r.Command == "!1PWR01");
       } else if (r is Input) {
-        inputStatus = r.ToString();
+        _inputStatus = r.ToString();
       }
       HGJConsole.Regions["recv"].WriteContent(r.ToString(), true);
     }
 
     private static void writeMenu() {
       if (!HGJConsole.Regions["menu"].Visible) HGJConsole.Regions["menu"].Visible = true;
-      HGJConsole.Regions["menu"].WriteContent(@"            Action:     Status:
+      HGJConsole.Regions["menu"].WriteContent(
+        @"            Action:     Status:
  Audio-info             Shift A
  Volume     +/-         Shift +/-
  Mute       M           Shift M
@@ -229,8 +230,11 @@ namespace ConsoleApplication1 {
       HGJConsole.Regions["inputselect"].Visible = false;
       HGJConsole.Draw(true);
     }
+
     private static void writeInputMenu() {
-      HGJConsole.Regions["inputselect"].WriteContent(string.Format(@"Current input: {0}
+      HGJConsole.Regions["inputselect"].WriteContent(
+        string.Format(
+          @"Current input: {0}
 
 Key: Input:  | Key:  Input:  (ESC Return)
  V   VCR/DVD |  C  CD
@@ -242,7 +246,8 @@ Key: Input:  | Key:  Input:  (ESC Return)
  D   BD/TAPE |
  T   TV/TAPE |
  H   PHONO   |
-", inputStatus));
+",
+          _inputStatus));
     }
   }
 }

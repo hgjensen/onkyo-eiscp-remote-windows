@@ -4,12 +4,14 @@ using System.Linq;
 
 namespace HGJ.ConsoleLib {
   public static class HGJConsole {
+    private const string Corner = "+";
+    private const string Hori = "-";
+    private const string Vert = "|";
+    private const string Blank = " ";
+    private static ConsoleColor _backgroundColor;
+    private static RegionDictionary<string, ConsoleRegion> _regions;
+    private static ConsolePoint _consoleSize;
     public static bool CanDraw { get; private set; }
-
-    private const string corner = "+";
-    private const string hori = "-";
-    private const string vert = "|";
-    private const string blank = " ";
 
     public static ConsoleColor BackgroundColor {
       get {
@@ -17,10 +19,9 @@ namespace HGJ.ConsoleLib {
           _backgroundColor = ConsoleColor.Black;
         return _backgroundColor;
       }
-      set {
-        _backgroundColor = value;
-      }
+      set { _backgroundColor = value; }
     }
+
     public static RegionDictionary<string, ConsoleRegion> Regions {
       get {
         if (_regions == default(RegionDictionary<string, ConsoleRegion>)) {
@@ -30,43 +31,46 @@ namespace HGJ.ConsoleLib {
         }
         return _regions;
       }
-      set {
-        _regions = value;
-      }
+      set { _regions = value; }
     }
-    public static int ConsoleHeight { get { return Console.WindowHeight; } }
-    public static int ConsoleWidth { get { return Console.WindowWidth; } }
 
-    private static ConsoleColor _backgroundColor;
-    private static RegionDictionary<string, ConsoleRegion> _regions;
+    public static int ConsoleHeight {
+      get { return Console.WindowHeight; }
+    }
+
+    public static int ConsoleWidth {
+      get { return Console.WindowWidth; }
+    }
 
     private static ConsolePoint consoleSize {
       get {
         if (_consoleSize == default(ConsolePoint) && Regions.Count > 0) {
-          var xx = Regions.OrderByDescending(p => p.Value.Origin.X).First();
-          var yy = Regions.OrderByDescending(p => p.Value.Origin.Y).First();
-          _consoleSize = new ConsolePoint((xx.Value.Origin.X + xx.Value.Width + 1), (yy.Value.Origin.Y + yy.Value.Height + 1));
+          KeyValuePair<string, ConsoleRegion> xx = Regions.OrderByDescending(p => p.Value.Origin.X).First();
+          KeyValuePair<string, ConsoleRegion> yy = Regions.OrderByDescending(p => p.Value.Origin.Y).First();
+          _consoleSize = new ConsolePoint((xx.Value.Origin.X + xx.Value.Width + 1),
+                                          (yy.Value.Origin.Y + yy.Value.Height + 1));
         } else if (_consoleSize == default(ConsolePoint) && Regions.Count == 0)
           _consoleSize = new ConsolePoint(50, 30);
         return _consoleSize;
       }
     }
-    private static ConsolePoint _consoleSize;
 
-    static void Regions_RemoveEvent(RegionDictionary<string, ConsoleRegion>.RemoveEventArgs pRemoveEventArgs) {
+    private static void Regions_RemoveEvent(RegionDictionary<string, ConsoleRegion>.RemoveEventArgs pRemoveEventArgs) {
       CanDraw = false;
       _consoleSize = null;
       CanDraw = true;
       Draw();
     }
-    static void Regions_AddEvent(RegionDictionary<string, ConsoleRegion>.AddEventArgs pAddEventArgs) {
+
+    private static void Regions_AddEvent(RegionDictionary<string, ConsoleRegion>.AddEventArgs pAddEventArgs) {
       CanDraw = false;
       pAddEventArgs.Value.OnContentUpdated += Value_OnContentUpdated;
       _consoleSize = null;
       CanDraw = true;
       Draw();
     }
-    static void Value_OnContentUpdated() {
+
+    private static void Value_OnContentUpdated() {
       CanDraw = false;
       _consoleSize = null;
       CanDraw = true;
@@ -82,7 +86,7 @@ namespace HGJ.ConsoleLib {
           Console.BufferWidth = consoleSize.X;
         }
 
-        ConsolePoint origpos = new ConsolePoint(Console.CursorLeft, Console.CursorTop);
+        var origpos = new ConsolePoint(Console.CursorLeft, Console.CursorTop);
         if (clear) {
           Console.BackgroundColor = BackgroundColor;
           Console.Clear();
@@ -117,7 +121,7 @@ namespace HGJ.ConsoleLib {
       //bool touchBottom = Regions.Any(p => (p.Value.Origin.Y) == r.Origin.Y + r.Height);
 
       //Generate first line
-      string firstline = corner;
+      string firstline = Corner;
       int lentitle = r.Title.Length;
       int w = r.Width;
       int titlestart = Convert.ToInt32(Math.Floor((w / 2m) - (lentitle / 2m)));
@@ -129,19 +133,19 @@ namespace HGJ.ConsoleLib {
           firstline += r.Title;
           x += lentitle - 1;
         } else
-          firstline += hori;
-      firstline += corner;
+          firstline += Hori;
+      firstline += Corner;
 
       //Generate last line
-      string lastline = corner;
+      string lastline = Corner;
       for (int x = 0; x < r.Width - 2; x++)
-        lastline += hori;
-      lastline += corner;
+        lastline += Hori;
+      lastline += Corner;
 
       //Make space-buffer
       string space = string.Empty;
       for (int x = 0; x < r.Width - 2; x++)
-        space += blank;
+        space += Blank;
 
       //Write border
       Console.SetCursorPosition(r.Origin.X, r.Origin.Y);
@@ -149,7 +153,7 @@ namespace HGJ.ConsoleLib {
 
       for (int x = 1; x < r.Height - 1; x++) {
         Console.SetCursorPosition(r.Origin.X, r.Origin.Y + x);
-        Console.Write(vert + space + vert);
+        Console.Write(Vert + space + Vert);
       }
 
       Console.SetCursorPosition(r.Origin.X, r.Origin.Y + r.Height - 1);
