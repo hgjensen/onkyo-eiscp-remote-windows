@@ -22,47 +22,9 @@ namespace OnkyoRemote {
       HGJConsole.Regions.Add("inputselect", new ConsoleRegion(new ConsolePoint(7, 2), 16, 60, "Input-select", false));
       HGJConsole.Draw(true);
 
-      //Auto-discovery, or get IP by input
-      HGJConsole.Regions["status"].WriteContent("Finding reciever...");
-      //var discovery = ISCPDeviceDiscovery.DiscoverDevice("172.16.40.255", 60128);
-      ISCPDeviceDiscovery.DiscoveryResult discovery = ISCPDeviceDiscovery.DiscoverDevice(60128);
-      string deviceip = discovery.IP;
-      if (string.IsNullOrEmpty(deviceip)) {
-        HGJConsole.Regions["status"].WriteContent("Finding reciever... failed.");
-        HGJConsole.Regions["input1"].WriteContent("Please input IP of reciever: ");
-        deviceip = HGJConsole.Regions["input1"].GetLine(2);
-        HGJConsole.Regions["device"].Visible = true;
-        discovery.IP = deviceip;
-        discovery.MAC = "N/A";
-        discovery.Model = "N/A";
-        discovery.Port = 60128;
-        discovery.Region = "N/A";
-        HGJConsole.Regions["device"].WriteContent(discovery.ToString());
-      } else {
-        HGJConsole.Regions["status"].WriteContent("Finding reciever... Success.");
-        HGJConsole.Regions["device"].Visible = true;
-        HGJConsole.Regions["device"].WriteContent(discovery.ToString());
-      }
-
-      //Check if host is alive
-      var p = new Ping();
-      PingReply rep = p.Send(deviceip, 3000);
-      while (rep != null && rep.Status != IPStatus.Success) {
-        HGJConsole.Regions["status"].WriteContent(string.Format(
-          "Cannot connect to Onkyo reciever ({0}). Sleeping 30sec", rep.Status));
-        Thread.Sleep(30000);
-        p.Send(deviceip, 3000);
-      }
-
-      //Setup sockets to reciever
-      HGJConsole.Regions["status"].WriteContent("Connecting.");
-      ISCPSocket.DeviceIp = discovery.IP;
-      ISCPSocket.DevicePort = discovery.Port;
-      ISCPSocket.OnPacketRecieved += ISCPSocket_OnPacketRecieved;
-      ISCPSocket.StartListener();
-      HGJConsole.Regions["status"].WriteContent("Connected!");
-      HGJConsole.Regions["recv"].Visible = true;
-      HGJConsole.Regions["input1"].WriteContent("Input:\r\n> ");
+      //Connect
+      while (!connect())
+        Thread.Sleep(5000);
 
       //Write menu to console-region
       writeMenu();
@@ -248,6 +210,57 @@ Key: Input:  | Key:  Input:  (ESC Return)
  H   PHONO   |
 ",
           _inputStatus));
+    }
+
+    private static bool connect() {
+      //Auto-discovery, or get IP by input
+      HGJConsole.Regions["status"].WriteContent("Finding reciever...");
+      //var discovery = ISCPDeviceDiscovery.DiscoverDevice("172.16.40.255", 60128);
+      ISCPDeviceDiscovery.DiscoveryResult discovery = ISCPDeviceDiscovery.DiscoverDevice(60128);
+      string deviceip = discovery.IP;
+      if (string.IsNullOrEmpty(deviceip)) {
+        HGJConsole.Regions["status"].WriteContent("Finding reciever... failed.");
+        HGJConsole.Regions["input1"].WriteContent("Please input IP of reciever: ");
+        deviceip = HGJConsole.Regions["input1"].GetLine(2);
+        HGJConsole.Regions["device"].Visible = true;
+        discovery.IP = deviceip;
+        discovery.MAC = "N/A";
+        discovery.Model = "N/A";
+        discovery.Port = 60128;
+        discovery.Region = "N/A";
+        HGJConsole.Regions["device"].WriteContent(discovery.ToString());
+      } else {
+        HGJConsole.Regions["status"].WriteContent("Finding reciever... Success.");
+        HGJConsole.Regions["device"].Visible = true;
+        HGJConsole.Regions["device"].WriteContent(discovery.ToString());
+      }
+
+      //Check if host is alive
+      var p = new Ping();
+      PingReply rep = p.Send(deviceip, 3000);
+      while (rep != null && rep.Status != IPStatus.Success) {
+        HGJConsole.Regions["status"].WriteContent(string.Format(
+          "Cannot connect to Onkyo reciever ({0}). Sleeping 30sec", rep.Status));
+        Thread.Sleep(30000);
+        p.Send(deviceip, 3000);
+      }
+
+      //Setup sockets to reciever
+      HGJConsole.Regions["status"].WriteContent("Connecting.");
+      ISCPSocket.DeviceIp = discovery.IP;
+      ISCPSocket.DevicePort = discovery.Port;
+      ISCPSocket.OnPacketRecieved += ISCPSocket_OnPacketRecieved;
+      try {
+        ISCPSocket.StartListener();
+        HGJConsole.Regions["status"].WriteContent("Connected!");
+        HGJConsole.Regions["recv"].Visible = true;
+        HGJConsole.Regions["input1"].WriteContent("Input:\r\n> ");
+      } catch (Exception x) {
+        HGJConsole.Regions["status"].WriteContent("Error connecting (" + x.Message + ")");
+        return false;
+      }
+
+      return true;
     }
   }
 }
