@@ -76,10 +76,14 @@ namespace OnkyoISCPlib {
     }
 
     private static void checkConnect() {
-      if (_sock == null)
-        _sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) { ReceiveTimeout = 1000 };
-      if (!_sock.Connected)
-        _sock.Connect(DeviceIp, DevicePort);
+      try {
+        if (_sock == null)
+          _sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) { ReceiveTimeout = 1000 };
+        if (!_sock.Connected)
+          _sock.Connect(DeviceIp, DevicePort);
+      } catch (Exception x) {
+        
+      }
     }
 
     private static void blockingListen(string str) {
