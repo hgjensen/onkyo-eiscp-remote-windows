@@ -1,0 +1,1 @@
+A .NET application, and library, for controlling various features of an ethernet-enabled Onkyo AV Receiver (via eISCP).
