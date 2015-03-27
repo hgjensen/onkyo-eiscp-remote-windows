@@ -35,10 +35,11 @@ namespace OnkyoISCPlib {
         string stringData = sb.ToString();
         if (stringData.Contains("!1ECN")) {
           int idx = stringData.IndexOf("!1ECN") + 5;
-          string mac = stringData.Substring(idx + 17, 12);
+          string[] parts = stringData.Substring(idx).Split('/');
+          string mac = parts[3].Substring(0,12);
           string ip = ARP.GetIPInfo(mac).IPAddress;
           ret.IP = ip;
-          ret.Port = Convert.ToInt32(stringData.Substring(idx + 8, 5));
+          ret.Port = Convert.ToInt32(parts[1]);
           ret.Region = stringData.Substring(idx + 14, 2);
           ret.MAC = mac;
           ret.Model = stringData.Substring(idx, 7);
